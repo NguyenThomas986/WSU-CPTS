@@ -10,7 +10,7 @@ Each course is organized into its own branch, with homework and exams separated 
 
 *Description goes here.*
 
-[View Course](../../tree/cpts-302) · [Homework](../../tree/cpts-302/homework) · [Exams](../../tree/cpts-302/exams)
+[View Course](../../tree/cpts-302) · [Homework](../../tree/cpts-302/homeworks) · [Exams](../../tree/cpts-302/exams)
 
 ---
 
@@ -18,7 +18,7 @@ Each course is organized into its own branch, with homework and exams separated 
 
 *Description goes here.*
 
-[View Course](../../tree/cpts-327) · [Homework](../../tree/cpts-327/homework) · [Exams](../../tree/cpts-327/exams)
+[View Course](../../tree/cpts-327) · [Homework](../../tree/cpts-327/homeworks) · [Exams](../../tree/cpts-327/exams)
 
 ---
 
@@ -26,7 +26,7 @@ Each course is organized into its own branch, with homework and exams separated 
 
 *Design and analysis of algorithms, with a focus on computational complexity and the design of efficient algorithms and data-handling procedures. Topics include algorithm analysis, sorting, divide and conquer, dynamic programming, greedy algorithms, amortized analysis, graph algorithms, number-theoretic algorithms, and NP-completeness.*
 
-[View Course](../../tree/cpts-350) · [Homework](../../tree/cpts-350/homework) · [Exams](../../tree/cpts-350/exams)
+[View Course](../../tree/cpts-350) · [Homework](../../tree/cpts-350/homeworks) · [Exams](../../tree/cpts-350/exams)
 
 ---
 
@@ -34,7 +34,7 @@ Each course is organized into its own branch, with homework and exams separated 
 
 *Description goes here.*
 
-[View Course](../../tree/cpts-360) · [Homework](../../tree/cpts-360/homework) · [Exams](../../tree/cpts-360/exams)
+[View Course](../../tree/cpts-360) · [Homework](../../tree/cpts-360/homeworks) · [Exams](../../tree/cpts-360/exams)
 
 ---
 
