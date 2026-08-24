@@ -40,6 +40,6 @@ This repository contains coursework and materials from the Computer Science clas
 
 ## CPTS 422
 
-*Description goes here.*
+*Software Engineering Principles II, focusing on software testing and the verification and validation of dependable software systems. Topics include unit, integration, and system testing; black-box and white-box testing; boundary value analysis; decision tables; code coverage; mutation testing; performance testing; property-based testing; and test planning. The course also includes a semester-long enterprise Java web application project using Spring MVC.*
 
 [View Course](../../tree/cpts-422) · [Homeworks](../../tree/cpts-422/homeworks) · [Exams](../../tree/cpts-422/exams)
