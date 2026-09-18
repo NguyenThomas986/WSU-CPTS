@@ -137,3 +137,19 @@ Reviewed the disclosure and repository state. The tracked Hello World program in
 Recorded the requested Git workflow, checked compile status and repository state, and documented this interaction. No assignment source code was generated or modified.
 
 ---
+
+## Codex Interaction 3
+
+### Tool
+OpenAI Codex
+
+### Prompt
+idk i have it tho can u create a .gitignore and a .env then and ill paste it in
+
+### AI Output
+Created `.gitignore` to exclude `.env`, object files, `.out` files, and simulator save files. Created `.env` with an `SSH_PRIVATE_KEY_PATH` placeholder. Recommended keeping the SSH private key in `~/.ssh` and putting only its path in `.env`; no private key was read or stored. No C source was generated or modified.
+
+### How AI Was Used
+Prepared local Git ignore rules and a credential path template to help configure SSH access. No assignment source code was generated or modified.
+
+---

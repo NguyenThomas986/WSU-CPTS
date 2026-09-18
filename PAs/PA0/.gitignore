@@ -1,0 +1,7 @@
+# Local credentials and settings
+.env
+
+# Build and simulator output
+*.o
+*.out
+fssim_*.txt
