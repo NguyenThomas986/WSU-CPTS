@@ -153,3 +153,40 @@ Created `.gitignore` to exclude `.env`, object files, `.out` files, and simulato
 Prepared local Git ignore rules and a credential path template to help configure SSH access. No assignment source code was generated or modified.
 
 ---
+
+## Codex Interaction 4
+
+### Tool
+OpenAI Codex
+
+### Prompt
+Let's start working on the assignment.
+
+For this step, focus only on the basic filesystem initialization.
+
+Using the assignment requirements and the starter code already in the repository:
+
+1. Inspect the current C source files.
+2. Identify where root and CWD should be initialized.
+3. Explain the initialization logic before changing code.
+4. Implement only the root/CWD setup.
+5. The root node should represent "/".
+6. root->parent should point to root.
+7. root->sibling should point to root.
+8. root->child should initially be NULL.
+9. CWD should initially point to root.
+10. Do not implement mkdir, rmdir, ls, cd, pwd, creat, rm, save, or reload yet.
+11. Compile with warnings enabled.
+12. Run a basic startup test.
+13. Update AI_disclosure.md with this exact prompt and your output.
+14. If the code compiles and the test succeeds, commit the changes with a descriptive commit message and push them to the current GitHub branch.
+
+Do not make unrelated changes.
+
+### AI Output
+Modified `Assignment/pa0_base.c` only for root/CWD initialization: added `<string.h>` for `strcpy`, made `initialize` return `void`, checked `malloc` failure, set `root->sibling = root`, and set `root->child = NULL`. The existing root name `/`, root parent pointer, directory type, and CWD assignment were retained. No filesystem commands were implemented. The starter compiled with `gcc -Wall -Wextra -std=c11` without warnings. A temporary test harness asserted all requested initial values, and a startup smoke test printed `Filesystem initialized!`. The command loop still repeats its prompt because input handling is not yet implemented.
+
+### How AI Was Used
+Reviewed the starter and handout, implemented the root/CWD initialization changes in `Assignment/pa0_base.c`, and generated a temporary test harness under `/tmp` to verify initialization. No other assignment source was modified.
+
+---
