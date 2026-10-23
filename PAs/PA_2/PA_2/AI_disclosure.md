@@ -209,3 +209,169 @@ The student supplied the requirements and earlier declarations described above. 
 ### Verification
 
 make clean and make passed. Strict C11 compilation with -Wall -Wextra -Wpedantic -Werror passed. All three parsed inputs matched their sample original-input lines. Missing argument was rejected.
+
+## Part 2: FCFS
+
+**Date:** 2026-10-22
+
+**Tool:** Codex
+
+### Prompt
+
+The verbatim implementation request above applies to this incremental part.
+
+### AI Response
+
+Added the cycle simulation and FCFS selection by ready time, arrival time, then input position. Used starter reporting helpers to verify complete FCFS sample sections. Counted waiting, CPU, and I/O intervals as part of the simulation.
+
+Exact generated source changes:
+
+```diff
+diff --git a/PAs/PA_2/PA_2/scheduler.c b/PAs/PA_2/PA_2/scheduler.c
+index e774d9b..b40912e 100644
+--- a/PAs/PA_2/PA_2/scheduler.c
++++ b/PAs/PA_2/PA_2/scheduler.c
+@@ -215,6 +215,108 @@ static _process *readProcesses(const char *filename)
+     return processes;
+ }
+ 
++/* Earlier arrival, then earlier input position, breaks every priority tie. */
++static bool earlierProcess(const _process *a, const _process *b)
++{
++    return a->A < b->A || (a->A == b->A && a->processID < b->processID);
++}
++
++static _process *chooseReady(_process processes[])
++{
++    _process *best = NULL;
++    for (uint32_t i = 0; i < TOTAL_CREATED_PROCESSES; ++i) {
++        _process *p = &processes[i];
++        if (p->state != READY)
++            continue;
++        if (best == NULL || p->readySince < best->readySince ||
++            (p->readySince == best->readySince && earlierProcess(p, best)))
++            best = p;
++    }
++    return best;
++}
++
++/* Each iteration accounts for the interval [time, time + 1). */
++static void simulate(_process processes[], FILE *random_file)
++{
++    uint32_t time = 0;
++    _process *running = NULL;
++    TOTAL_FINISHED_PROCESSES = 0;
++    TOTAL_NUMBER_OF_CYCLES_SPENT_BLOCKED = 0;
++    while (TOTAL_FINISHED_PROCESSES < TOTAL_CREATED_PROCESSES) {
++        for (uint32_t i = 0; i < TOTAL_CREATED_PROCESSES; ++i) {
++            _process *p = &processes[i];
++            if ((p->state == UNSTARTED && p->A <= time) ||
++                (p->state == BLOCKED && p->ioBurstRemaining == 0)) {
++                p->state = READY;
++                p->readySince = time;
++            }
++        }
++        if (running == NULL) {
++            running = chooseReady(processes);
++            if (running != NULL) {
++                running->state = RUNNING;
++                if (running->cpuBurstRemaining == 0) {
++                    uint32_t burst = randomOS(running->B, running->processID, random_file);
++                    uint32_t remaining = running->C - running->currentCPUTimeRun;
++                    if (burst > remaining)
++                        burst = remaining;
++                    running->cpuBurstRemaining = burst;
++                    running->cpuBurstLength = burst;
++                }
++            }
++        }
++        bool anyBlocked = false;
++        for (uint32_t i = 0; i < TOTAL_CREATED_PROCESSES; ++i) {
++            _process *p = &processes[i];
++            if (p->state == READY)
++                ++p->currentWaitingTime;
++            else if (p->state == BLOCKED) {
++                ++p->currentIOBlockedTime;
++                --p->ioBurstRemaining;
++                anyBlocked = true;
++            }
++        }
++        if (anyBlocked)
++            ++TOTAL_NUMBER_OF_CYCLES_SPENT_BLOCKED;
++        ++time;
++        if (running != NULL) {
++            ++running->currentCPUTimeRun;
++            --running->cpuBurstRemaining;
++            // Termination takes priority over blocking.
++            if (running->currentCPUTimeRun == running->C) {
++                running->state = TERMINATED;
++                running->finishingTime = time;
++                ++TOTAL_FINISHED_PROCESSES;
++                running = NULL;
++            } else if (running->cpuBurstRemaining == 0) {
++                running->state = BLOCKED;
++                running->ioBurstRemaining = running->cpuBurstLength * running->M;
++                running = NULL;
++            }
++        }
++    }
++    CURRENT_CYCLE = time + 1; // Starter summary helper uses CURRENT_CYCLE - 1.
++}
++
++static void runAlgorithm(const _process original[], FILE *random_file)
++{
++    _process *processes = malloc(TOTAL_CREATED_PROCESSES * sizeof(*processes));
++    if (processes == NULL) {
++        perror("malloc");
++        exit(EXIT_FAILURE);
++    }
++    memcpy(processes, original, TOTAL_CREATED_PROCESSES * sizeof(*processes));
++    printf("######################### START OF FIRST COME FIRST SERVE #########################\n");
++    printStart(processes);
++    simulate(processes, random_file);
++    printFinal(processes);
++    printf("\nThe scheduling algorithm used was First Come First Serve\n");
++    printProcessSpecifics(processes);
++    printSummaryData(processes);
++    printf("######################### END OF FIRST COME FIRST SERVE #########################\n");
++    free(processes);
++}
++
+ int main(int argc, char *argv[])
+ {
+     if (argc != 2) {
+@@ -224,7 +326,14 @@ int main(int argc, char *argv[])
+     _process *process_list = readProcesses(argv[1]);
+     if (process_list == NULL)
+         return EXIT_FAILURE;
+-    printStart(process_list);
++    FILE *random_file = fopen("random-numbers", "r");
++    if (random_file == NULL) {
++        perror("random-numbers");
++        free(process_list);
++        return EXIT_FAILURE;
++    }
++    runAlgorithm(process_list, random_file);
++    fclose(random_file);
+     free(process_list);
+     return EXIT_SUCCESS;
+ }
+```
+
+### How It Was Used
+
+Applied directly to the assignment working tree.
+
+### Student Contribution
+
+The student supplied the requirements and earlier declarations described above. Codex wrote and tested this implementation; no additional student edits are claimed.
+
+### Files Affected
+
+- scheduler.c (source changes, if shown above)
+- Makefile (build changes, if shown above)
+- AI_disclosure.md (this record)
+
+### Verification
+
+All three Makefile sample targets matched their complete FCFS reference sections byte for byte. Strict warning compilation passed.
