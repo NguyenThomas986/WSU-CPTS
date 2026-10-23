@@ -811,3 +811,153 @@ The student reported accidentally clearing the file and requested restoration.
 ### Verification
 
 Compared restored bytes against the committed file before appending the new entries; they matched exactly.
+
+## Part 6: Final verification
+
+**Date:** 2026-10-22
+
+**Tool:** Codex
+
+### Prompt
+
+The verbatim implementation request above applies to this incremental part.
+
+### AI Response
+
+Completed the final clean build, sample comparisons, focused C assertion tests, undefined-behavior sanitizer checks, and input validation checks. Removed the compiled scheduler with make clean. No additional source fixes were needed.
+
+Exact generated source changes:
+
+```diff
+```
+
+### How It Was Used
+
+Applied directly to the assignment working tree.
+
+### Student Contribution
+
+The student supplied the requirements and earlier declarations described above. Codex wrote and tested this implementation; no additional student edits are claimed.
+
+### Files Affected
+
+- scheduler.c (source changes, if shown above)
+- Makefile (build changes, if shown above)
+- AI_disclosure.md (this record)
+
+### Verification
+
+make clean and make passed without warnings. make test01, test02, and test03 matched complete supplied outputs byte for byte. All focused tests passed when rebuilt with -Werror and undefined-behavior sanitizer. Verified stable arrival sorting and trailing comments; rejected zero process count, incomplete tuples, zero burst bound, malformed closing parenthesis, and missing file. git diff --check passed. No binaries were staged.
+
+### Generated verification code
+
+These temporary test harnesses were generated and run by Codex. They are reproduced here for transparency and can be recreated outside the submission directory. The C harnesses include scheduler.c with its main renamed, allowing assertions against the simulation state.
+
+pa2_samples.py:
+
+```python
+import subprocess,sys
+from pathlib import Path
+root=Path('PA_2/PA_2')
+n=int(sys.argv[1])
+for i in range(1,4):
+ actual=subprocess.check_output(['make','-s',f'test0{i}'],cwd=root,text=True)
+ expected=(root/f'sample_io/output/summary/output-{i}').read_text()
+ parts=expected.split('######################### START OF ')
+ expected=parts[0]+''.join('######################### START OF '+p for p in parts[1:n+1])
+ assert actual==expected, f'Sample {i} differs'
+print(f'All three samples match exactly for {n} implemented algorithm(s).')
+```
+
+pa2_rr_test.c:
+
+```c
+#define main scheduler_main
+#include "/home/vboxuser/WSU-CPTS/PAs/PA_2/PA_2/scheduler.c"
+#undef main
+#include <assert.h>
+
+int main(void)
+{
+    FILE *random_file = fopen("random-numbers", "r");
+    assert(random_file != NULL);
+    TOTAL_CREATED_PROCESSES = 2;
+    _process pair[] = {
+        {.A=0, .B=10, .C=5, .M=2, .processID=0},
+        {.A=0, .B=10, .C=3, .M=2, .processID=1}
+    };
+    simulate(pair, random_file, RR);
+    assert(pair[0].finishingTime == 8 && pair[1].finishingTime == 7);
+    assert(pair[0].currentWaitingTime == 3 && pair[1].currentWaitingTime == 4);
+    assert(pair[0].currentIOBlockedTime == 0 && pair[1].currentIOBlockedTime == 0);
+    TOTAL_CREATED_PROCESSES = 1;
+    _process single[] = {{.A=0, .B=10, .C=12, .M=2, .processID=0}};
+    simulate(single, random_file, RR);
+    assert(single[0].finishingTime == 32);
+    assert(single[0].currentIOBlockedTime == 20);
+    assert(single[0].currentWaitingTime == 0);
+    fclose(random_file);
+    puts("RR: preemption, burst preservation, I/O length, and termination checks passed.");
+}
+```
+
+pa2_sjf_test.c:
+
+```c
+#define main scheduler_main
+#include "/home/vboxuser/WSU-CPTS/PAs/PA_2/PA_2/scheduler.c"
+#undef main
+#include <assert.h>
+int main(void)
+{
+    FILE *f = fopen("random-numbers", "r");
+    assert(f);
+    TOTAL_CREATED_PROCESSES = 2;
+    _process p[] = {{.A=0,.B=10,.C=5,.M=1,.processID=0},
+                    {.A=1,.B=10,.C=1,.M=1,.processID=1}};
+    simulate(p, f, SJF);
+    assert(p[0].finishingTime == 5 && p[1].finishingTime == 6);
+    _process ready[] = {{.A=0,.C=10,.currentCPUTimeRun=8,.state=READY,.processID=0},
+                        {.A=0,.C=3,.state=READY,.processID=1}};
+    assert(chooseReady(ready, SJF) == &ready[0]);
+    ready[1].C = 2;
+    assert(chooseReady(ready, SJF) == &ready[0]);
+    ready[0].A = 1;
+    assert(chooseReady(ready, SJF) == &ready[1]);
+    fclose(f);
+    puts("SJF: non-preemption, remaining-work priority, and both tie breakers passed.");
+}
+```
+
+pa2_stats_test.c:
+
+```c
+#define main scheduler_main
+#include "/home/vboxuser/WSU-CPTS/PAs/PA_2/PA_2/scheduler.c"
+#undef main
+#include <assert.h>
+int main(void)
+{
+    FILE *f = fopen("random-numbers", "r");
+    assert(f);
+    for (Algorithm a = FCFS; a <= SJF; ++a) {
+        TOTAL_CREATED_PROCESSES = 2;
+        _process p[] = {{.A=0,.B=1,.C=2,.M=3,.processID=0},
+                        {.A=0,.B=1,.C=2,.M=3,.processID=1}};
+        simulate(p, f, a);
+        assert(p[0].currentIOBlockedTime + p[1].currentIOBlockedTime == 6);
+        assert(TOTAL_NUMBER_OF_CYCLES_SPENT_BLOCKED == 4);
+        assert(CURRENT_CYCLE - 1 == 6);
+        for (unsigned i=0; i<2; ++i)
+            assert(p[i].finishingTime - p[i].A == p[i].C +
+                   p[i].currentWaitingTime + p[i].currentIOBlockedTime);
+        TOTAL_CREATED_PROCESSES = 1;
+        _process late[] = {{.A=5,.B=1,.C=2,.M=0}};
+        simulate(late, f, a);
+        assert(late[0].finishingTime == 7 && late[0].currentWaitingTime == 0);
+        assert(TOTAL_NUMBER_OF_CYCLES_SPENT_BLOCKED == 0);
+    }
+    fclose(f);
+    puts("Statistics: overlapping I/O, turnaround identity, idle arrival, zero I/O passed.");
+}
+```
