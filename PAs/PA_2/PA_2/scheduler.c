@@ -3,9 +3,11 @@
 #include <string.h>
 #include <stdint.h>
 
-// Headers as needed
+#include <inttypes.h>
 
 typedef enum {false, true} bool;        // Allows boolean types in C
+
+typedef enum { UNSTARTED, READY, RUNNING, BLOCKED, TERMINATED } ProcessState;
 
 /* Defines a job struct */
 typedef struct Process {
@@ -15,13 +17,24 @@ typedef struct Process {
     uint32_t M;                         // M: Multiplier of CPU burst time
     uint32_t processID;                 // The process ID given upon input read
 
-    // Add other fields as needed
+    ProcessState state;
+    uint32_t currentCPUTimeRun;
+    uint32_t cpuBurstRemaining;
+    uint32_t cpuBurstLength;             // Full burst, preserved across RR preemption
+    uint32_t ioBurstRemaining;
+    uint32_t quantumRemaining;
+    uint32_t readySince;
+    uint32_t finishingTime;
+    uint32_t currentIOBlockedTime;
+    uint32_t currentWaitingTime;
 } _process;
 
 uint32_t TOTAL_CREATED_PROCESSES = 0;   // The total number of processes constructed
 const uint32_t SEED_VALUE = 200;  // Seed value for reading from file
 
-// Additional variables as needed
+uint32_t TOTAL_FINISHED_PROCESSES = 0;
+uint32_t CURRENT_CYCLE = 0;
+uint32_t TOTAL_NUMBER_OF_CYCLES_SPENT_BLOCKED = 0;
 
 
 /**
@@ -54,8 +67,6 @@ uint32_t getRandNumFromFile(uint32_t line, FILE* random_num_file_ptr){
  */
 uint32_t randomOS(uint32_t upper_bound, uint32_t process_indx, FILE* random_num_file_ptr)
 {
-    char str[20];
-    
     uint32_t unsigned_rand_int = (uint32_t) getRandNumFromFile(SEED_VALUE+process_indx, random_num_file_ptr);
     uint32_t returnValue = 1 + (unsigned_rand_int % upper_bound);
 
@@ -166,17 +177,54 @@ void printSummaryData(_process process_list[])
 } // End of the print summary data function
 
 
-/**
- * The magic starts from here
- */
+/* Read exactly the declared tuples; any trailing comment is ignored. */
+static _process *readProcesses(const char *filename)
+{
+    FILE *input = fopen(filename, "r");
+    if (input == NULL) {
+        perror(filename);
+        return NULL;
+    }
+    if (fscanf(input, "%" SCNu32, &TOTAL_CREATED_PROCESSES) != 1 ||
+        TOTAL_CREATED_PROCESSES == 0) {
+        fprintf(stderr, "Input must begin with a positive process count.\n");
+        fclose(input);
+        return NULL;
+    }
+    _process *processes = calloc(TOTAL_CREATED_PROCESSES, sizeof(*processes));
+    if (processes == NULL) {
+        perror("calloc");
+        fclose(input);
+        return NULL;
+    }
+    for (uint32_t i = 0; i < TOTAL_CREATED_PROCESSES; ++i) {
+        _process *p = &processes[i];
+        char closing;
+        if (fscanf(input, " ( %" SCNu32 " %" SCNu32 " %" SCNu32
+                   " %" SCNu32 " %c", &p->A, &p->B, &p->C, &p->M, &closing) != 5 ||
+            closing != ')' || p->B == 0 || p->C == 0) {
+            fprintf(stderr, "Invalid process tuple at index %" PRIu32 ".\n", i);
+            free(processes);
+            fclose(input);
+            return NULL;
+        }
+        p->processID = i;
+        p->state = UNSTARTED;
+    }
+    fclose(input);
+    return processes;
+}
+
 int main(int argc, char *argv[])
 {
-    uint32_t total_num_of_process;               // Read from the file -- number of process to create
-    _process process_list[total_num_of_process]; // Creates a container for all processes
-    // Other variables
-
-
-    // Write code for your shiny scheduler
-
-    return 0;
-} 
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s input-file\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+    _process *process_list = readProcesses(argv[1]);
+    if (process_list == NULL)
+        return EXIT_FAILURE;
+    printStart(process_list);
+    free(process_list);
+    return EXIT_SUCCESS;
+}
