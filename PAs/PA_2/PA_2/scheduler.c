@@ -9,6 +9,8 @@ typedef enum {false, true} bool;        // Allows boolean types in C
 
 typedef enum { UNSTARTED, READY, RUNNING, BLOCKED, TERMINATED } ProcessState;
 
+typedef enum { FCFS, RR } Algorithm;
+
 /* Defines a job struct */
 typedef struct Process {
     uint32_t A;                         // A: Arrival time of the process
@@ -236,7 +238,7 @@ static _process *chooseReady(_process processes[])
 }
 
 /* Each iteration accounts for the interval [time, time + 1). */
-static void simulate(_process processes[], FILE *random_file)
+static void simulate(_process processes[], FILE *random_file, Algorithm algorithm)
 {
     uint32_t time = 0;
     _process *running = NULL;
@@ -255,6 +257,7 @@ static void simulate(_process processes[], FILE *random_file)
             running = chooseReady(processes);
             if (running != NULL) {
                 running->state = RUNNING;
+                running->quantumRemaining = 2;
                 if (running->cpuBurstRemaining == 0) {
                     uint32_t burst = randomOS(running->B, running->processID, random_file);
                     uint32_t remaining = running->C - running->currentCPUTimeRun;
@@ -282,7 +285,9 @@ static void simulate(_process processes[], FILE *random_file)
         if (running != NULL) {
             ++running->currentCPUTimeRun;
             --running->cpuBurstRemaining;
-            // Termination takes priority over blocking.
+            if (algorithm == RR)
+                --running->quantumRemaining;
+            // Termination, then blocking, then quantum expiration.
             if (running->currentCPUTimeRun == running->C) {
                 running->state = TERMINATED;
                 running->finishingTime = time;
@@ -292,13 +297,17 @@ static void simulate(_process processes[], FILE *random_file)
                 running->state = BLOCKED;
                 running->ioBurstRemaining = running->cpuBurstLength * running->M;
                 running = NULL;
+            } else if (algorithm == RR && running->quantumRemaining == 0) {
+                running->state = READY;
+                running->readySince = time;
+                running = NULL;
             }
         }
     }
     CURRENT_CYCLE = time + 1; // Starter summary helper uses CURRENT_CYCLE - 1.
 }
 
-static void runAlgorithm(const _process original[], FILE *random_file)
+static void runAlgorithm(const _process original[], FILE *random_file, Algorithm algorithm)
 {
     _process *processes = malloc(TOTAL_CREATED_PROCESSES * sizeof(*processes));
     if (processes == NULL) {
@@ -306,14 +315,16 @@ static void runAlgorithm(const _process original[], FILE *random_file)
         exit(EXIT_FAILURE);
     }
     memcpy(processes, original, TOTAL_CREATED_PROCESSES * sizeof(*processes));
-    printf("######################### START OF FIRST COME FIRST SERVE #########################\n");
+    const char *banners[] = {"FIRST COME FIRST SERVE", "ROUND ROBIN"};
+    const char *names[] = {"First Come First Serve", "Round Robin"};
+    printf("######################### START OF %s #########################\n", banners[algorithm]);
     printStart(processes);
-    simulate(processes, random_file);
+    simulate(processes, random_file, algorithm);
     printFinal(processes);
-    printf("\nThe scheduling algorithm used was First Come First Serve\n");
+    printf("\nThe scheduling algorithm used was %s\n", names[algorithm]);
     printProcessSpecifics(processes);
     printSummaryData(processes);
-    printf("######################### END OF FIRST COME FIRST SERVE #########################\n");
+    printf("######################### END OF %s #########################\n", banners[algorithm]);
     free(processes);
 }
 
@@ -332,7 +343,8 @@ int main(int argc, char *argv[])
         free(process_list);
         return EXIT_FAILURE;
     }
-    runAlgorithm(process_list, random_file);
+    runAlgorithm(process_list, random_file, FCFS);
+    runAlgorithm(process_list, random_file, RR);
     fclose(random_file);
     free(process_list);
     return EXIT_SUCCESS;

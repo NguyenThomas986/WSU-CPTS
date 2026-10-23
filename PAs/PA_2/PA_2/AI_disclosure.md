@@ -375,3 +375,131 @@ The student supplied the requirements and earlier declarations described above. 
 ### Verification
 
 All three Makefile sample targets matched their complete FCFS reference sections byte for byte. Strict warning compilation passed.
+
+## Part 3: Round Robin
+
+**Date:** 2026-10-22
+
+**Tool:** Codex
+
+### Prompt
+
+The verbatim implementation request above applies to this incremental part.
+
+### AI Response
+
+Added a two-unit quantum with termination before blocking before preemption. Preempted processes retain their remaining CPU burst and full original burst length for I/O calculation.
+
+Exact generated source changes:
+
+```diff
+diff --git a/PAs/PA_2/PA_2/scheduler.c b/PAs/PA_2/PA_2/scheduler.c
+index b40912e..cbc40b3 100644
+--- a/PAs/PA_2/PA_2/scheduler.c
++++ b/PAs/PA_2/PA_2/scheduler.c
+@@ -9,6 +9,8 @@ typedef enum {false, true} bool;        // Allows boolean types in C
+ 
+ typedef enum { UNSTARTED, READY, RUNNING, BLOCKED, TERMINATED } ProcessState;
+ 
++typedef enum { FCFS, RR } Algorithm;
++
+ /* Defines a job struct */
+ typedef struct Process {
+     uint32_t A;                         // A: Arrival time of the process
+@@ -236,7 +238,7 @@ static _process *chooseReady(_process processes[])
+ }
+ 
+ /* Each iteration accounts for the interval [time, time + 1). */
+-static void simulate(_process processes[], FILE *random_file)
++static void simulate(_process processes[], FILE *random_file, Algorithm algorithm)
+ {
+     uint32_t time = 0;
+     _process *running = NULL;
+@@ -255,6 +257,7 @@ static void simulate(_process processes[], FILE *random_file)
+             running = chooseReady(processes);
+             if (running != NULL) {
+                 running->state = RUNNING;
++                running->quantumRemaining = 2;
+                 if (running->cpuBurstRemaining == 0) {
+                     uint32_t burst = randomOS(running->B, running->processID, random_file);
+                     uint32_t remaining = running->C - running->currentCPUTimeRun;
+@@ -282,7 +285,9 @@ static void simulate(_process processes[], FILE *random_file)
+         if (running != NULL) {
+             ++running->currentCPUTimeRun;
+             --running->cpuBurstRemaining;
+-            // Termination takes priority over blocking.
++            if (algorithm == RR)
++                --running->quantumRemaining;
++            // Termination, then blocking, then quantum expiration.
+             if (running->currentCPUTimeRun == running->C) {
+                 running->state = TERMINATED;
+                 running->finishingTime = time;
+@@ -292,13 +297,17 @@ static void simulate(_process processes[], FILE *random_file)
+                 running->state = BLOCKED;
+                 running->ioBurstRemaining = running->cpuBurstLength * running->M;
+                 running = NULL;
++            } else if (algorithm == RR && running->quantumRemaining == 0) {
++                running->state = READY;
++                running->readySince = time;
++                running = NULL;
+             }
+         }
+     }
+     CURRENT_CYCLE = time + 1; // Starter summary helper uses CURRENT_CYCLE - 1.
+ }
+ 
+-static void runAlgorithm(const _process original[], FILE *random_file)
++static void runAlgorithm(const _process original[], FILE *random_file, Algorithm algorithm)
+ {
+     _process *processes = malloc(TOTAL_CREATED_PROCESSES * sizeof(*processes));
+     if (processes == NULL) {
+@@ -306,14 +315,16 @@ static void runAlgorithm(const _process original[], FILE *random_file)
+         exit(EXIT_FAILURE);
+     }
+     memcpy(processes, original, TOTAL_CREATED_PROCESSES * sizeof(*processes));
+-    printf("######################### START OF FIRST COME FIRST SERVE #########################\n");
++    const char *banners[] = {"FIRST COME FIRST SERVE", "ROUND ROBIN"};
++    const char *names[] = {"First Come First Serve", "Round Robin"};
++    printf("######################### START OF %s #########################\n", banners[algorithm]);
+     printStart(processes);
+-    simulate(processes, random_file);
++    simulate(processes, random_file, algorithm);
+     printFinal(processes);
+-    printf("\nThe scheduling algorithm used was First Come First Serve\n");
++    printf("\nThe scheduling algorithm used was %s\n", names[algorithm]);
+     printProcessSpecifics(processes);
+     printSummaryData(processes);
+-    printf("######################### END OF FIRST COME FIRST SERVE #########################\n");
++    printf("######################### END OF %s #########################\n", banners[algorithm]);
+     free(processes);
+ }
+ 
+@@ -332,7 +343,8 @@ int main(int argc, char *argv[])
+         free(process_list);
+         return EXIT_FAILURE;
+     }
+-    runAlgorithm(process_list, random_file);
++    runAlgorithm(process_list, random_file, FCFS);
++    runAlgorithm(process_list, random_file, RR);
+     fclose(random_file);
+     free(process_list);
+     return EXIT_SUCCESS;
+```
+
+### How It Was Used
+
+Applied directly to the assignment working tree.
+
+### Student Contribution
+
+The student supplied the requirements and earlier declarations described above. Codex wrote and tested this implementation; no additional student edits are claimed.
+
+### Files Affected
+
+- scheduler.c (source changes, if shown above)
+- Makefile (build changes, if shown above)
+- AI_disclosure.md (this record)
+
+### Verification
+
+All three samples matched both implemented algorithms exactly. A strict-warning C assertion harness verified two competing long bursts finish at times 8 and 7, with waits 3 and 4. A single 12-unit job with a 10-unit burst and M=2 finished at 32 with exactly 20 I/O units and no waiting, confirming burst preservation across preemption.
