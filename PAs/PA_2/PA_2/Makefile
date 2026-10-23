@@ -1,8 +1,8 @@
 CC = gcc
-CFLAGS = -g
+CFLAGS = -std=c11 -g -Wall -Wextra -Wpedantic
 
 scheduler: scheduler.c
-	$(CC) scheduler.c -o scheduler
+	$(CC) $(CFLAGS) scheduler.c -o scheduler
 
 test01:
 	./scheduler sample_io/input/input-1

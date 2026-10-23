@@ -606,3 +606,208 @@ The student supplied the requirements and earlier declarations described above. 
 ### Verification
 
 All three full sample outputs matched byte for byte through their Makefile targets. Strict C harness verified non-preemption, remaining rather than original total work, and both tie breakers.
+
+## Part 5: Statistics and output formatting
+
+**Date:** 2026-10-22
+
+**Tool:** Codex
+
+### Prompt
+
+The verbatim implementation request above applies to this incremental part.
+
+### AI Response
+
+Preserved starter statistics helpers, corrected unsigned output specifiers, removed an unused total, and sorted the displayed process list by arrival/input order. Enabled C11 and compiler warnings in the provided Makefile. I/O utilization counts intervals with any blocked process, separately from summed per-process I/O time.
+
+Exact generated source changes:
+
+```diff
+diff --git a/PAs/PA_2/PA_2/Makefile b/PAs/PA_2/PA_2/Makefile
+index d1a8876..4f0e32a 100644
+--- a/PAs/PA_2/PA_2/Makefile
++++ b/PAs/PA_2/PA_2/Makefile
+@@ -1,8 +1,8 @@
+ CC = gcc
+-CFLAGS = -g
++CFLAGS = -std=c11 -g -Wall -Wextra -Wpedantic
+ 
+ scheduler: scheduler.c
+-	$(CC) scheduler.c -o scheduler
++	$(CC) $(CFLAGS) scheduler.c -o scheduler
+ 
+ test01:
+ 	./scheduler sample_io/input/input-1
+@@ -14,4 +14,4 @@ test03:
+ 	./scheduler sample_io/input/input-3
+ 
+ clean:
+-	rm -f scheduler *.o *~
+\ No newline at end of file
++	rm -f scheduler *.o *~
+diff --git a/PAs/PA_2/PA_2/scheduler.c b/PAs/PA_2/PA_2/scheduler.c
+index 470ac2b..c733f53 100644
+--- a/PAs/PA_2/PA_2/scheduler.c
++++ b/PAs/PA_2/PA_2/scheduler.c
+@@ -85,12 +85,12 @@ uint32_t randomOS(uint32_t upper_bound, uint32_t process_indx, FILE* random_num_
+  */
+ void printStart(_process process_list[])
+ {
+-    printf("The original input was: %i", TOTAL_CREATED_PROCESSES);
++    printf("The original input was: %u", TOTAL_CREATED_PROCESSES);
+ 
+     uint32_t i = 0;
+     for (; i < TOTAL_CREATED_PROCESSES; ++i)
+     {
+-        printf(" ( %i %i %i %i)", process_list[i].A, process_list[i].B,
++        printf(" ( %u %u %u %u)", process_list[i].A, process_list[i].B,
+                process_list[i].C, process_list[i].M);
+     }
+     printf("\n");
+@@ -98,17 +98,17 @@ void printStart(_process process_list[])
+ 
+ /**
+  * Prints to standard output the final output
+- * finished_process_list is the terminated processes (in array form) in the order they each finished in.
++ * sorted_process_list is ordered by arrival time, then original input position.
+  */
+-void printFinal(_process finished_process_list[])
++void printFinal(_process sorted_process_list[])
+ {
+-    printf("The (sorted) input is: %i", TOTAL_CREATED_PROCESSES);
++    printf("The (sorted) input is: %u", TOTAL_CREATED_PROCESSES);
+ 
+     uint32_t i = 0;
+-    for (; i < TOTAL_FINISHED_PROCESSES; ++i)
++    for (; i < TOTAL_CREATED_PROCESSES; ++i)
+     {
+-        printf(" ( %i %i %i %i)", finished_process_list[i].A, finished_process_list[i].B,
+-               finished_process_list[i].C, finished_process_list[i].M);
++        printf(" ( %u %u %u %u)", sorted_process_list[i].A, sorted_process_list[i].B,
++               sorted_process_list[i].C, sorted_process_list[i].M);
+     }
+     printf("\n");
+ } // End of the print final function
+@@ -123,13 +123,13 @@ void printProcessSpecifics(_process process_list[])
+     printf("\n");
+     for (; i < TOTAL_CREATED_PROCESSES; ++i)
+     {
+-        printf("Process %i:\n", process_list[i].processID);
+-        printf("\t(A,B,C,M) = (%i,%i,%i,%i)\n", process_list[i].A, process_list[i].B,
++        printf("Process %u:\n", process_list[i].processID);
++        printf("\t(A,B,C,M) = (%u,%u,%u,%u)\n", process_list[i].A, process_list[i].B,
+                process_list[i].C, process_list[i].M);
+-        printf("\tFinishing time: %i\n", process_list[i].finishingTime);
+-        printf("\tTurnaround time: %i\n", process_list[i].finishingTime - process_list[i].A);
+-        printf("\tI/O time: %i\n", process_list[i].currentIOBlockedTime);
+-        printf("\tWaiting time: %i\n", process_list[i].currentWaitingTime);
++        printf("\tFinishing time: %u\n", process_list[i].finishingTime);
++        printf("\tTurnaround time: %u\n", process_list[i].finishingTime - process_list[i].A);
++        printf("\tI/O time: %u\n", process_list[i].currentIOBlockedTime);
++        printf("\tWaiting time: %u\n", process_list[i].currentWaitingTime);
+         printf("\n");
+     }
+ } // End of the print process specifics function
+@@ -142,14 +142,12 @@ void printSummaryData(_process process_list[])
+ {
+     uint32_t i = 0;
+     double total_amount_of_time_utilizing_cpu = 0.0;
+-    double total_amount_of_time_io_blocked = 0.0;
+     double total_amount_of_time_spent_waiting = 0.0;
+     double total_turnaround_time = 0.0;
+     uint32_t final_finishing_time = CURRENT_CYCLE - 1;
+     for (; i < TOTAL_CREATED_PROCESSES; ++i)
+     {
+         total_amount_of_time_utilizing_cpu += process_list[i].currentCPUTimeRun;
+-        total_amount_of_time_io_blocked += process_list[i].currentIOBlockedTime;
+         total_amount_of_time_spent_waiting += process_list[i].currentWaitingTime;
+         total_turnaround_time += (process_list[i].finishingTime - process_list[i].A);
+     }
+@@ -170,7 +168,7 @@ void printSummaryData(_process process_list[])
+     double avg_waiting_time = total_amount_of_time_spent_waiting / TOTAL_CREATED_PROCESSES;
+ 
+     printf("Summary Data:\n");
+-    printf("\tFinishing time: %i\n", CURRENT_CYCLE - 1);
++    printf("\tFinishing time: %u\n", CURRENT_CYCLE - 1);
+     printf("\tCPU Utilisation: %6f\n", cpu_util);
+     printf("\tI/O Utilisation: %6f\n", io_util);
+     printf("\tThroughput: %6f processes per hundred cycles\n", throughput);
+@@ -313,6 +311,17 @@ static void simulate(_process processes[], FILE *random_file, Algorithm algorith
+     CURRENT_CYCLE = time + 1; // Starter summary helper uses CURRENT_CYCLE - 1.
+ }
+ 
++static int compareArrival(const void *left, const void *right)
++{
++    const _process *a = left;
++    const _process *b = right;
++    if (earlierProcess(a, b))
++        return -1;
++    if (earlierProcess(b, a))
++        return 1;
++    return 0;
++}
++
+ static void runAlgorithm(const _process original[], FILE *random_file, Algorithm algorithm)
+ {
+     _process *processes = malloc(TOTAL_CREATED_PROCESSES * sizeof(*processes));
+@@ -325,8 +334,9 @@ static void runAlgorithm(const _process original[], FILE *random_file, Algorithm
+     const char *names[] = {"First Come First Serve", "Round Robin", "Shortest Job First"};
+     printf("######################### START OF %s #########################\n", banners[algorithm]);
+     printStart(processes);
+-    simulate(processes, random_file, algorithm);
++    qsort(processes, TOTAL_CREATED_PROCESSES, sizeof(*processes), compareArrival);
+     printFinal(processes);
++    simulate(processes, random_file, algorithm);
+     printf("\nThe scheduling algorithm used was %s\n", names[algorithm]);
+     printProcessSpecifics(processes);
+     printSummaryData(processes);
+```
+
+### How It Was Used
+
+Applied directly to the assignment working tree.
+
+### Student Contribution
+
+The student supplied the requirements and earlier declarations described above. Codex wrote and tested this implementation; no additional student edits are claimed.
+
+### Files Affected
+
+- scheduler.c (source changes, if shown above)
+- Makefile (build changes, if shown above)
+- AI_disclosure.md (this record)
+
+### Verification
+
+make clean and make passed without warnings. All three full sample outputs matched byte for byte. A strict C assertion harness verified overlapping I/O counts 4 busy intervals rather than 6 summed process intervals, turnaround equals CPU plus I/O plus waiting, arrival at time 5 handles initial idle time, and zero-duration I/O does not create extra waiting.
+
+## Disclosure restoration
+
+**Date:** 2026-10-22
+
+**Tool:** Codex
+
+### Prompt
+
+ok I accidnetally cleared the AI-disclousre recreate what we had before
+
+### AI Response
+
+Restored parts 1–4 exactly from commit 129cb33, then appended the completed statistics/output work as Part 5.
+
+### How It Was Used
+
+Recovered the accidentally cleared disclosure without reconstructing or inventing earlier records.
+
+### Student Contribution
+
+The student reported accidentally clearing the file and requested restoration.
+
+### Files Affected
+
+- AI_disclosure.md
+
+### Verification
+
+Compared restored bytes against the committed file before appending the new entries; they matched exactly.
