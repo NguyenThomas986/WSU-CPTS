@@ -9,7 +9,7 @@ typedef enum {false, true} bool;        // Allows boolean types in C
 
 typedef enum { UNSTARTED, READY, RUNNING, BLOCKED, TERMINATED } ProcessState;
 
-typedef enum { FCFS, RR } Algorithm;
+typedef enum { FCFS, RR, SJF } Algorithm;
 
 /* Defines a job struct */
 typedef struct Process {
@@ -223,15 +223,21 @@ static bool earlierProcess(const _process *a, const _process *b)
     return a->A < b->A || (a->A == b->A && a->processID < b->processID);
 }
 
-static _process *chooseReady(_process processes[])
+static _process *chooseReady(_process processes[], Algorithm algorithm)
 {
     _process *best = NULL;
     for (uint32_t i = 0; i < TOTAL_CREATED_PROCESSES; ++i) {
         _process *p = &processes[i];
         if (p->state != READY)
             continue;
-        if (best == NULL || p->readySince < best->readySince ||
-            (p->readySince == best->readySince && earlierProcess(p, best)))
+        if (best == NULL) {
+            best = p;
+            continue;
+        }
+        uint32_t priority = algorithm == SJF ? p->C - p->currentCPUTimeRun : p->readySince;
+        uint32_t bestPriority = algorithm == SJF ? best->C - best->currentCPUTimeRun : best->readySince;
+        if (priority < bestPriority ||
+            (priority == bestPriority && earlierProcess(p, best)))
             best = p;
     }
     return best;
@@ -254,7 +260,7 @@ static void simulate(_process processes[], FILE *random_file, Algorithm algorith
             }
         }
         if (running == NULL) {
-            running = chooseReady(processes);
+            running = chooseReady(processes, algorithm);
             if (running != NULL) {
                 running->state = RUNNING;
                 running->quantumRemaining = 2;
@@ -315,8 +321,8 @@ static void runAlgorithm(const _process original[], FILE *random_file, Algorithm
         exit(EXIT_FAILURE);
     }
     memcpy(processes, original, TOTAL_CREATED_PROCESSES * sizeof(*processes));
-    const char *banners[] = {"FIRST COME FIRST SERVE", "ROUND ROBIN"};
-    const char *names[] = {"First Come First Serve", "Round Robin"};
+    const char *banners[] = {"FIRST COME FIRST SERVE", "ROUND ROBIN", "SHORTEST JOB FIRST"};
+    const char *names[] = {"First Come First Serve", "Round Robin", "Shortest Job First"};
     printf("######################### START OF %s #########################\n", banners[algorithm]);
     printStart(processes);
     simulate(processes, random_file, algorithm);
@@ -345,6 +351,7 @@ int main(int argc, char *argv[])
     }
     runAlgorithm(process_list, random_file, FCFS);
     runAlgorithm(process_list, random_file, RR);
+    runAlgorithm(process_list, random_file, SJF);
     fclose(random_file);
     free(process_list);
     return EXIT_SUCCESS;
