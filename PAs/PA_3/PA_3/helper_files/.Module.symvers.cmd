@@ -1,1 +1,0 @@
-cmd_/home/vboxuser/WSU-CPTS/PAs/PA_3/PA_3/helper_files/Module.symvers := sed 's/\.ko$$/\.o/' /home/vboxuser/WSU-CPTS/PAs/PA_3/PA_3/helper_files/modules.order | scripts/mod/modpost -m -a  -o /home/vboxuser/WSU-CPTS/PAs/PA_3/PA_3/helper_files/Module.symvers -e -i Module.symvers   -T -
